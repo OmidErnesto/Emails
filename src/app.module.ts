@@ -1,14 +1,11 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { EmailModule } from './email/email.module';
 import { ConsoleModule } from './console/console.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
-    BullModule.forRoot({
-      redis: { host: 'redis', port: 6379 },
-    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
@@ -19,8 +16,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    ConsoleModule,
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
     EmailModule,
+    ConsoleModule,
   ],
 })
 export class AppModule {}

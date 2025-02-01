@@ -1,14 +1,10 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bull';
+import { CommandModule } from 'nestjs-command';
 import { ConsoleService } from './console.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [
-    BullModule.forRoot({
-      redis: { host: 'redis', port: 6379 },
-    }),
-    BullModule.registerQueue({ name: 'emailQueue' }),  // Registrar la cola aquí
-  ],
+  imports: [CommandModule, EmailModule],
   providers: [ConsoleService],
 })
 export class ConsoleModule {}

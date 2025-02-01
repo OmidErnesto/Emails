@@ -1,26 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
-import * as readline from 'readline';
+import { Command } from 'nestjs-command';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ConsoleService {
-  constructor(@InjectQueue('emailQueue') private emailQueue: Queue) {
-    this.init();
-  }
+  constructor(private readonly emailService: EmailService) {}
 
-  init() {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.setPrompt('sends\n');
-    rl.prompt();
-    rl.on('line', () => this.sendEmails());
-  }
-
-  sendEmails() {
-    const emails = Array.from({ length: 100 }, (_, i) => ({
-      to: `user${i + 1}@example.com`,
-      message: `Mensaje para usuario ${i + 1}`,
-    }));
-    emails.forEach(email => this.emailQueue.add(email));
+  @Command({ command: 'send:emails', describe: 'Enviar correos desde la BD' })
+  async sendEmails() {
+    console.log('Iniciando envío de correos...');
+    await this.emailService.sendBulkEmails();
+    console.log('Envío de correos finalizado.');
   }
 }
