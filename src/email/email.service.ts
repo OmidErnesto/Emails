@@ -16,37 +16,41 @@ export class EmailService {
   ) {}
 
   async sendBulkEmails() {
-    const emails = await this.emailRepository.find();
-
-    this.logger.log(`Total de correos a enviar: ${emails.length}`);
-
-    if (emails.length === 0) {
-      this.logger.log('No hay correos para enviar.');
-      return;
-    }
-
-    for (const email of emails) {
-      try {
-        await this.emailQueue.add(
-          'send-email',
-          { id: email.id, to: email.to, message: email.message },
-          {
-            attempts: 3, 
-            backoff: {
-              type: 'exponential',
-              delay: 2000, 
-            },
-            removeOnComplete: true,
-            removeOnFail: false, 
-          }
-        );
-        this.logger.log(`Agregado a la cola: ${email.to}`);
-      } catch (error) {
-        this.logger.error(`Error al agregar el correo ${email.to} a la cola:`, error.message);
+    let offset = 0;
+    const batchSize = 20;
+    while (true) {
+      const emails = await this.emailRepository.find({
+        take: batchSize,
+        skip: offset,
+      });
+  
+      if (emails.length === 0) {
+        this.logger.log('No hay más correos para enviar.');
+        break;
       }
+  
+      this.logger.log(`Enviando lote de ${emails.length} correos...`);
+  
+      for (const email of emails) {
+        try {
+          await this.emailQueue.add(
+            'send-email',
+            { id: email.id, to: email.to, message: email.message },
+            {
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 2000 },
+              removeOnComplete: true,
+              removeOnFail: false,
+            }
+          );
+          this.logger.log(`Correo agregado a la cola: ${email.to}`);
+        } catch (error) {
+          this.logger.error(`Error al agregar correo ${email.to}:`, error.message);
+        }
+      }
+  
+      offset += batchSize;
+      await new Promise(resolve => setTimeout(resolve, 10000));
     }
-
-    const queueCount = await this.emailQueue.getWaitingCount();
-    this.logger.log(`Total de correos en la cola: ${queueCount}`);
   }
 }

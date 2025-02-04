@@ -18,8 +18,11 @@ export class EmailProcessor {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'qjhoson@gmail.com',
-        pass: 'tepe tqzj qyml bqvr',
+        user: 'omid2000xd@gmail.com',  //Debes crear una contrase de aplicacion para el correo que utilices
+        pass: 'xgzn lmtv luhj qugi  ', //La contraseña es una "contraseña de aplicación" que se puede crear para no utilizar tu contraseña original 
+      },
+      tls: {
+        rejectUnauthorized: false, // Esto desactiva la verificación del certificado. No se recomienda para producción
       },
     });
 
@@ -32,13 +35,13 @@ export class EmailProcessor {
     });
   }
 
-  @Process({ name: 'send-email', concurrency: 10 }) 
+  @Process({ name: 'send-email', concurrency: 20 }) 
   async handleSendEmail(job: Job<{ id: number; to: string; message: string }>) {
     const { id, to, message } = job.data;
     
     try {
       await this.transporter.sendMail({
-        from: 'qjhoson@gmail.com',
+        from: 'omid2000xd@gmail.com',
         to,
         subject: 'Mensaje Automático',
         text: message,
