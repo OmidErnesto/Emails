@@ -17,28 +17,24 @@ export class EmailService {
 
   async sendBulkEmails() {
     let offset = 0;
-    const batchSize = 20;
+    const batchSize = 50;
+
     while (true) {
-      const emails = await this.emailRepository.find({
-        take: batchSize,
-        skip: offset,
-      });
-  
+      const emails = await this.emailRepository.find({ take: batchSize, skip: offset });
       if (emails.length === 0) {
         this.logger.log('No hay más correos para enviar.');
         break;
       }
-  
+
       this.logger.log(`Enviando lote de ${emails.length} correos...`);
-  
+
       for (const email of emails) {
         try {
-          await this.emailQueue.add(
-            'send-email',
+          await this.emailQueue.add('send-email',
             { id: email.id, to: email.to, message: email.message },
             {
-              attempts: 3,
-              backoff: { type: 'exponential', delay: 2000 },
+              attempts: 3, 
+              backoff: { type: 'fixed', delay: 3000 }, 
               removeOnComplete: true,
               removeOnFail: false,
             }
@@ -48,9 +44,14 @@ export class EmailService {
           this.logger.error(`Error al agregar correo ${email.to}:`, error.message);
         }
       }
-  
+
       offset += batchSize;
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      while ((await this.emailQueue.getJobCounts()).waiting > 0) {
+        this.logger.log('Esperando a que la cola se vacíe...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    
+      this.logger.log('Todos los correos han sido procesados.');
     }
   }
 }

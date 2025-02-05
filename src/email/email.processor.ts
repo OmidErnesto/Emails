@@ -1,8 +1,8 @@
 import { Processor, Process } from '@nestjs/bull';
-import { Job } from 'bull';
+import { Job, Queue } from 'bull';
 import * as nodemailer from 'nodemailer';
 import { Injectable, Logger } from '@nestjs/common';
-import { Email } from './email.entity';
+import { InjectQueue } from '@nestjs/bull';
 
 @Injectable()
 @Processor('email-queue')
@@ -10,7 +10,7 @@ export class EmailProcessor {
   private readonly logger = new Logger(EmailProcessor.name);
   private transporter: nodemailer.Transporter;
 
-  constructor() {
+  constructor(@InjectQueue('email-queue') private emailQueue: Queue) {
     this.initializeTransporter();
   }
 
@@ -18,11 +18,11 @@ export class EmailProcessor {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'omid2000xd@gmail.com',  //Debes crear una contrase de aplicacion para el correo que utilices
-        pass: 'xgzn lmtv luhj qugi  ', //La contraseña es una "contraseña de aplicación" que se puede crear para no utilizar tu contraseña original 
+        user: 'omid2000xd@gmail.com',
+        pass: 'xgzn lmtv luhj qugi',
       },
       tls: {
-        rejectUnauthorized: false, // Esto desactiva la verificación del certificado. No se recomienda para producción
+        rejectUnauthorized: false,
       },
     });
 
@@ -35,21 +35,29 @@ export class EmailProcessor {
     });
   }
 
-  @Process({ name: 'send-email', concurrency: 20 }) 
-  async handleSendEmail(job: Job<{ id: number; to: string; message: string }>) {
-    const { id, to, message } = job.data;
-    
+  @Process({ name: 'send-email', concurrency: 10 }) 
+  async handleSendEmail(job: Job<{ id: number; to: string; message: string; retries: number }>) {
+    const { id, to, message, retries = 0 } = job.data;
+
     try {
       await this.transporter.sendMail({
         from: 'omid2000xd@gmail.com',
         to,
-        subject: 'Mensaje Automático',
+        subject: 'Mensaje Automático, tal vez sin error',
         text: message,
       });
-
-      this.logger.log(` Correo enviado exitosamente a: ${to}`);
+      
+      this.logger.log(`Correo enviado exitosamente a: ${to}`);
     } catch (error) {
       this.logger.error(`Error enviando correo a ${to}:`, error.message);
+
+      if (retries < 3) { 
+        const delay = 3000;
+        this.logger.warn(`Correo ${to} reencolado con ${delay / 1000}s de retraso.`);
+        await this.emailQueue.add('send-email', { id, to, message, retries: retries + 1 }, { delay });
+      } else {
+        this.logger.error(`Correo ${to} falló después de 3 intentos.`);
+      }
     }
   }
 }
