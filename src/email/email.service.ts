@@ -22,11 +22,11 @@ export class EmailService {
     while (true) {
       const emails = await this.emailRepository.find({ take: batchSize, skip: offset });
       if (emails.length === 0) {
-        this.logger.log('No hay más correos para enviar.');
+        console.log('No hay más correos para enviar.');
         break;
       }
 
-      this.logger.log(`Enviando lote de ${emails.length} correos...`);
+      console.log(`Enviando lote de ${emails.length} correos...`);
 
       for (const email of emails) {
         try {
@@ -34,24 +34,24 @@ export class EmailService {
             { id: email.id, to: email.to, message: email.message },
             {
               attempts: 3, 
-              backoff: { type: 'fixed', delay: 3000 }, 
+              backoff: { type: 'fixed', delay: 10000 }, // Incrementar el tiempo de espera entre reintentos
               removeOnComplete: true,
               removeOnFail: false,
             }
           );
-          this.logger.log(`Correo agregado a la cola: ${email.to}`);
+          console.log(`Correo agregado a la cola: ${email.to}`);
         } catch (error) {
-          this.logger.error(`Error al agregar correo ${email.to}:`, error.message);
+          console.error(`Error al agregar correo ${email.to}:`, error.message);
         }
       }
 
       offset += batchSize;
       while ((await this.emailQueue.getJobCounts()).waiting > 0) {
-        this.logger.log('Esperando a que la cola se vacíe...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        console.log('Esperando a que la cola se vacíe...');
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Esperar 10 segundos antes de verificar nuevamente
       }
     
-      this.logger.log('Todos los correos han sido procesados.');
+      console.log('Todos los correos han sido procesados.');
     }
   }
 }

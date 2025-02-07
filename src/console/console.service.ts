@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { Command } from 'nestjs-command';
+import { Command, CommandRunner } from 'nest-commander';
 import { EmailService } from '../email/email.service';
 
+@Command({
+  name: 'send:emails',
+  description: 'Enviar correos desde la BD', 
+})
 @Injectable()
-export class ConsoleService {
-  constructor(private readonly emailService: EmailService) {}
+export class ConsoleService extends CommandRunner {
+  constructor(private readonly emailService: EmailService) {
+    super();
+  }
 
-  @Command({ command: 'send:emails', describe: 'Enviar correos desde la BD' })
-  async sendEmails() {
+  async run(passedParams: string[], options?: any): Promise<void> {
     console.log('Iniciando envío de correos...');
     await this.emailService.sendBulkEmails();
     console.log('Envío de correos finalizado.');

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { EmailModule } from './email/email.module';
 import { ConsoleModule } from './console/console.module';
+import { ConsoleService } from './console/console.service';
 
 @Module({
   imports: [
@@ -25,5 +26,6 @@ import { ConsoleModule } from './console/console.module';
     EmailModule,
     ConsoleModule,
   ],
+  providers: [ConsoleService],
 })
 export class AppModule {}

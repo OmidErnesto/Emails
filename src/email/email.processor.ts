@@ -35,7 +35,7 @@ export class EmailProcessor {
     });
   }
 
-  @Process({ name: 'send-email', concurrency: 10 }) 
+  @Process({ name: 'send-email', concurrency: 1 }) // Reducir la concurrencia a 1
   async handleSendEmail(job: Job<{ id: number; to: string; message: string; retries: number }>) {
     const { id, to, message, retries = 0 } = job.data;
 
@@ -47,17 +47,20 @@ export class EmailProcessor {
         text: message,
       });
       
-      this.logger.log(`Correo enviado exitosamente a: ${to}`);
+      console.log(`Correo enviado exitosamente a: ${to}`);
     } catch (error) {
-      this.logger.error(`Error enviando correo a ${to}:`, error.message);
+      console.error(`Error enviando correo a ${to}:`, error.message);
 
       if (retries < 3) { 
-        const delay = 3000;
-        this.logger.warn(`Correo ${to} reencolado con ${delay / 1000}s de retraso.`);
+        const delay = (retries + 1) * 10000; // Incrementar el tiempo de espera con cada reintento
+        console.warn(`Correo ${to} reencolado con ${delay / 1000}s de retraso.`);
         await this.emailQueue.add('send-email', { id, to, message, retries: retries + 1 }, { delay });
       } else {
-        this.logger.error(`Correo ${to} falló después de 3 intentos.`);
+        console.error(`Correo ${to} falló después de 3 intentos.`);
       }
+    } finally {
+      // Esperar un tiempo antes de procesar el siguiente correo
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos entre cada correo
     }
   }
 }
